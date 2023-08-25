@@ -80,6 +80,7 @@ type Props = {
   isKeyError?: boolean;
   keyError?: string;
   autoCapitalization?: boolean;
+  handleCheckedSecret: (secretObj: {_id: string | undefined, isChecked: string | boolean}) =>  void
 };
 
 export const SecretInputRow = memo(
@@ -100,7 +101,8 @@ export const SecretInputRow = memo(
     isKeyError,
     keyError,
     secUniqId,
-    autoCapitalization
+    autoCapitalization,
+    handleCheckedSecret
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -223,10 +225,18 @@ export const SecretInputRow = memo(
       return <></>;
     }
 
+
+    // console.log("SECRET => ", checkedSecrets)
+
     return (
       <tr className="group flex flex-row hover:bg-mineshaft-700" key={index}>
-        <td className="flex h-10 w-10 items-center justify-center border-none px-4">
-          <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
+        <td className="flex h-10 w-10 items-center justify-center border-none ml-4">
+          <Checkbox
+            className="mr-0 data-[state=checked]:bg-primary"
+            id="autoCapitalization"
+            // isChecked={Boolean(value)}
+            onCheckedChange={(isChecked) => handleCheckedSecret({_id: secUniqId, isChecked})}
+          />
         </td>
         <Controller
           control={control}
@@ -395,9 +405,9 @@ export const SecretInputRow = memo(
                               className="mr-0 data-[state=checked]:bg-primary"
                               id="autoCapitalization"
                               isChecked={selectedTagIds?.[wsTag.slug]}
-                              onCheckedChange={() => {}}
+                              onCheckedChange={() => { }}
                             >
-                              {}
+                              { }
                             </Checkbox>
                           }
                           key={wsTag._id}

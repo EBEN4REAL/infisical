@@ -8,7 +8,7 @@ export type CheckboxProps = Omit<
   CheckboxPrimitive.CheckboxProps,
   "checked" | "disabled" | "required"
 > & {
-  children: ReactNode;
+  children?: ReactNode;
   id: string;
   isDisabled?: boolean;
   isChecked?: boolean;
