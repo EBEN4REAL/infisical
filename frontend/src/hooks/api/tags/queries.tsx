@@ -34,10 +34,11 @@ export const useCreateWsTag = () => {
   const queryClient = useQueryClient();
 
   return useMutation<CreateTagRes, {}, CreateTagDTO>({
-    mutationFn: async ({ workspaceID, tagName, tagSlug }) => {
+    mutationFn: async ({ workspaceID, tagName, tagSlug, checkedSecrets }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${workspaceID}/tags`, {
         name: tagName,
-        slug: tagSlug
+        slug: tagSlug,
+        checkedSecrets: (checkedSecrets && checkedSecrets.length > 0) ? checkedSecrets : []
       })
       return data;
     },

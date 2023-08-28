@@ -5,26 +5,28 @@ import * as yup from "yup";
 import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
 
 type Props = {
-  onCreateTag: (tagName: string) => Promise<void>;
+  onCreateTag: (tagName: string, checkedSecrets: { _id: string, isChecked: string | boolean }[]) => Promise<void>;
+  checkedSecrets: { _id: string, isChecked: string | boolean }[]
 };
 
 const createTagSchema = yup.object({
-  name: yup.string().required().trim().label("Tag Name")
+  name: yup.string().required().trim().label("Tag Name"),
+  checkedSecrets: yup.array().nullable()
 });
 type FormData = yup.InferType<typeof createTagSchema>;
 
-export const CreateTagModal = ({ onCreateTag }: Props): JSX.Element => {
+export const CreateTagModal = ({ onCreateTag,  checkedSecrets: $checkedSecrets}: Props): JSX.Element => {
   const {
     control,
     reset,
     formState: { isSubmitting },
-    handleSubmit
+    handleSubmit,
   } = useForm<FormData>({
     resolver: yupResolver(createTagSchema)
   });
 
   const onFormSubmit = async ({ name }: FormData) => {
-    await onCreateTag(name);
+    await onCreateTag(name, $checkedSecrets);
     reset();
   };
 

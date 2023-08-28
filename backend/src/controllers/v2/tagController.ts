@@ -6,7 +6,8 @@ import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
-  const { name, slug } = req.body;
+  const { name, slug, checkedSecrets } = req.body;
+
   
   const tagToCreate = {
       name,
@@ -16,8 +17,17 @@ export const createWorkspaceTag = async (req: Request, res: Response) => {
     };
   
   const createdTag = await new Tag(tagToCreate).save();
-  
-  res.json(createdTag);
+  const secretsIds = checkedSecrets.map((secret: {_id: string, isChecked: boolean}) => secret._id)
+
+  if(checkedSecrets.length > 0) {
+    const bulkTagsUpdate = await Secret.updateMany(
+      { _id: { $in: secretsIds.map((id: string) => new Types.ObjectId(id)) } },
+      { $push: { tags: createdTag } }
+    );
+    res.json(bulkTagsUpdate)
+  } else {
+    res.json(createdTag);
+  }
 };
 
 export const deleteWorkspaceTag = async (req: Request, res: Response) => {

@@ -49,6 +49,7 @@ router.post(
   param("workspaceId").exists().trim(),
   body("name").exists().trim(),
   body("slug").exists().trim(),
+  body("checkedSecrets").exists(),
   validateRequest,
   tagController.createWorkspaceTag
 );

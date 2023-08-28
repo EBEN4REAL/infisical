@@ -16,6 +16,7 @@ export type CreateTagDTO = {
   workspaceID: string;
   tagSlug: string;
   tagName: string;
+  checkedSecrets: { _id: string, isChecked: string | boolean }[]
 };
 
 export type CreateTagRes = {
