@@ -827,6 +827,7 @@ export const DashboardPage = () => {
           type: "success"
         });
         setCheckedSecrets(() => []);
+        refetch()
       } catch (error) {
         createNotification({
           text: `Failed to move ${checkedSecrets.length > 1 ? "secrets" : "secret"}`,
