@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Integration } from "../../models";
+import { Folder, Integration } from "../../models";
 import { EventService } from "../../services";
 import { eventStartIntegration } from "../../events";
-import Folder from "../../models/folder";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
+import { syncSecretsToActiveIntegrationsQueue } from "../../queues/integrations/syncSecretsToThirdPartyServices";
 
 /**
  * Create/initialize an (empty) integration for integration authorization
@@ -29,7 +29,8 @@ export const createIntegration = async (req: Request, res: Response) => {
     owner,
     path,
     region,
-    secretPath
+    secretPath,
+    metadata
   } = req.body;
 
   const folders = await Folder.findOne({
@@ -64,7 +65,8 @@ export const createIntegration = async (req: Request, res: Response) => {
     region,
     secretPath,
     integration: req.integrationAuth.integration,
-    integrationAuth: new Types.ObjectId(integrationAuthId)
+    integrationAuth: new Types.ObjectId(integrationAuthId),
+    metadata
   }).save();
 
   if (integration) {
@@ -76,7 +78,7 @@ export const createIntegration = async (req: Request, res: Response) => {
       })
     });
   }
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -218,3 +220,15 @@ export const deleteIntegration = async (req: Request, res: Response) => {
     integration
   });
 };
+
+// Will trigger sync for all integrations within the given env and workspace id 
+export const manualSync = async (req: Request, res: Response) => {
+  const { workspaceId, environment } = req.body;
+  syncSecretsToActiveIntegrationsQueue({
+    workspaceId,
+    environment
+  })
+
+  res.status(200).send()
+};
+

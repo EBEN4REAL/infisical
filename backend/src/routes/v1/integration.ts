@@ -4,6 +4,7 @@ import {
   requireAuth,
   requireIntegrationAuth,
   requireIntegrationAuthorizationAuth,
+  requireWorkspaceAuth,
   validateRequest,
 } from "../../middleware";
 import {
@@ -36,6 +37,8 @@ router.post(
   body("owner").trim(),
   body("path").trim(),
   body("region").trim(),
+  body("metadata").optional().isObject().withMessage("Metadata should be an object"),
+  body("metadata.secretSuffix").optional().isString().withMessage("Suffix should be a string"),
   validateRequest,
   integrationController.createIntegration
 );
@@ -71,6 +74,21 @@ router.delete(
   param("integrationId").exists().trim(),
   validateRequest,
   integrationController.deleteIntegration
+);
+
+router.post(
+  "/manual-sync",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "body",
+  }),
+  body("environment").isString().exists().trim(),
+  body("workspaceId").exists().trim(),
+  validateRequest,
+  integrationController.manualSync
 );
 
 export default router;

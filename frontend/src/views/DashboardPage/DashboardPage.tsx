@@ -39,13 +39,11 @@ import {
   DropdownMenuTrigger
 } from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
-import { twMerge } from "tailwind-merge";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
 import {
   Button,
-  Checkbox,
   DeleteActionModal,
   IconButton,
   Input,
@@ -90,6 +88,7 @@ import {
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { WorkspaceEnv, WsTag } from "@app/hooks/api/types";
 
+import AddTagPopoverContent from "../../components/AddTagPopoverContent/AddTagPopoverContent";
 import { CompareSecret } from "./components/CompareSecret";
 import { CreateTagModal } from "./components/CreateTagModal";
 import {
@@ -305,6 +304,7 @@ export const DashboardPage = () => {
     mode: "onBlur",
     resolver: yupResolver(schema)
   });
+
 
   const {
     register,
@@ -526,13 +526,14 @@ export const DashboardPage = () => {
   }, []);
 
   const onCreateWsTag = useCallback(
-    async (tagName: string, $checkedSecrets: { _id: string, isChecked: string | boolean }[]) => {
+    async (tagName: string, $checkedSecrets: { _id: string, isChecked: string | boolean }[], tagColor: string) => {
       try {
         await createWsTag({
           workspaceID: workspaceId,
           tagName,
           tagSlug: tagName.replace(/ /g, "_"),
-          checkedSecrets: $checkedSecrets
+          checkedSecrets: $checkedSecrets,
+          tagColor
         });
         handlePopUpClose("addTag");
         createNotification({
@@ -750,7 +751,18 @@ export const DashboardPage = () => {
 
 
   const [selectedTags, setSelectedtags] = useState<WsTag[]>([])
+  const [selectedTagIds, setSelectedTagIds] = useState<Record<string, boolean | undefined>>({})
+  const [hoveredTag, setHoveredTag] = useState<WsTag | null>(null);
 
+  const handleTagOnMouseEnter = (wsTag: WsTag) => {
+    setHoveredTag(wsTag);
+  };
+
+  const handleTagOnMouseLeave = () => {
+    setHoveredTag(null);
+  };
+
+  const checkIfTagIsVisible = (wsTag: WsTag) => wsTag._id === hoveredTag?._id;
 
   useEffect(() => {
     const secCheckBox = document.querySelector("#sec-checkbox")
@@ -765,7 +777,7 @@ export const DashboardPage = () => {
     const newSecrets = secrets?.secrets
     if (newSecrets) {
       const fieldsCopy = [...newSecrets]
-      const updatedSelectedTags = fieldsCopy.reduce((acc, cur) => {
+      const updatedSelectedTags: WsTag[] = fieldsCopy.reduce((acc, cur) => {
         const { tags } = cur
         if (tags && tags.length > 0) {
           // eslint-disable-next-line no-restricted-syntax
@@ -775,7 +787,13 @@ export const DashboardPage = () => {
         }
         return acc
       }, [])
+
+      const updatedTagsIds: Record<string, boolean> = {}
+      updatedSelectedTags.forEach(tag => {
+        updatedTagsIds[tag.slug] = true
+      })
       setSelectedtags(updatedSelectedTags)
+      setSelectedTagIds((prev) => ({ ...prev, ...updatedTagsIds }))
     }
   }, [secrets])
 
@@ -837,6 +855,7 @@ export const DashboardPage = () => {
     }
   }
 
+
   const handleSecretsBulkDelete = async () => {
     // eslint-disable-next-line no-alert
     const confirm = window.confirm(`Are you sure you want to delete ${checkedSecrets.length > 1 ? "secrets" : "secret"}?`)
@@ -885,6 +904,8 @@ export const DashboardPage = () => {
     }
   }
 
+
+
   const handleCheckedState = (checked: boolean, wsTag: WsTag) => {
     const fieldsCopy = [...fields]
     const checkedSecretsCopy = [...checkedSecrets].map(secret => secret._id)
@@ -911,14 +932,14 @@ export const DashboardPage = () => {
     if (tagIndex > -1) {
       selectedTagsCopy.splice(tagIndex, 1)
       handleCheckedState(false, wsTag)
+      setSelectedTagIds((prev) => ({ ...prev, [wsTag.name]: undefined }))
     } else {
       selectedTagsCopy.push(wsTag)
       handleCheckedState(true, wsTag)
+      setSelectedTagIds((prev) => ({ ...prev, [wsTag.name]: true }))
     }
     setSelectedtags(() => selectedTagsCopy)
   }
-
-  const isTagChecked = (wsTag: WsTag) => selectedTags.filter(tag => tag._id === wsTag._id).length > 0
 
 
 
@@ -948,47 +969,16 @@ export const DashboardPage = () => {
                     </Tooltip>
                   </div>
                 </PopoverTrigger>
-                <PopoverContent
-                  side="left"
-                  className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
-                  hideCloseBtn
-                >
-                  <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
-                    Add tags to {checkedSecrets.length > 1 ? "secret" : "secrets"}
-                  </div>
-                  <div className="flex flex-col space-y-1">
-                    {wsTags?.map((wsTag) => (
-                      <Button
-                        variant="plain"
-                        size="sm"
-                        className={twMerge(
-                          "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
-                          isTagChecked(wsTag) && "text-primary"
-                        )}
-                        onClick={() => onSelectTag(wsTag)}
-                        leftIcon={
-                          <Checkbox
-                            className="mr-0 data-[state=checked]:bg-primary"
-                            id="autoCapitalization"
-                            isChecked={isTagChecked(wsTag)} />
-                        }
-                        key={wsTag._id}
-                      >
-                        {wsTag.slug}
-                      </Button>
-                    ))}
-                    <Button
-                      variant="star"
-                      color="primary"
-                      size="sm"
-                      className="mt-4 h-7 justify-start bg-mineshaft-600 px-1"
-                      onClick={handleCreateTagModalOpen}
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    >
-                      Add new tag
-                    </Button>
-                  </div>
-                </PopoverContent>
+                <AddTagPopoverContent
+                  wsTags={wsTags}
+                  secKey={checkedSecrets.length > 1 ? "secrets" : "secret"}
+                  selectedTagIds={selectedTagIds}
+                  handleSelectTag={(wsTag: WsTag) => onSelectTag(wsTag)}
+                  handleTagOnMouseEnter={(wsTag: WsTag) => handleTagOnMouseEnter(wsTag)}
+                  handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
+                  checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
+                  handleOnCreateTagOpen={handleCreateTagModalOpen}
+                />
               </Popover>
 
             </div>

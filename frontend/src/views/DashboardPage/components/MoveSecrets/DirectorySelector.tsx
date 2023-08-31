@@ -117,7 +117,7 @@ const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, on
             {
                 (directoryTree.length > 0) && (
                     <div>
-                        <h2 className="text-md font-semibold  text-gray-300">Select a folder path within the root directory:</h2>
+                        <h2 className="text-md font-semibold  text-gray-300 mb-3">Select a folder path within the workspace:</h2>
                         {renderRootDirectory(directoryTree, "")}
                     </div>
                 )
@@ -126,12 +126,12 @@ const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, on
             {
                 (directoryData?.folders && directoryData?.folders.length > 0) && (
                     <div>
-                        <h2 className="text-md font-semibold text-gray-300">Select a folder within current directory:</h2>
+                        <h2 className="text-md font-semibold text-gray-300 mt-5 mb-3">Select a folder within current directory:</h2>
                         {renderCurrentDirectory(directoryData?.folders, "")}
                     </div>
                 )
             }
-            <p className="text-sm mt-2 text-gray-300 mt-5">Selected folder path: <span className="rounded-md bg-mineshaft-600 py-1 px-1.5 ml-2">{adjustedPath}</span></p>
+            <p className="text-sm  text-gray-300 ">Selected folder path: <span className="rounded-md bg-mineshaft-600 py-1 px-1.5 ml-2">{adjustedPath}</span></p>
         </div>
     );
 };

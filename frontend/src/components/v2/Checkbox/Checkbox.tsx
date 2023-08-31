@@ -13,6 +13,7 @@ export type CheckboxProps = Omit<
   isDisabled?: boolean;
   isChecked?: boolean;
   isRequired?: boolean;
+  checkIndicatorBg?: string | undefined;
 };
 
 export const Checkbox = ({
@@ -22,6 +23,7 @@ export const Checkbox = ({
   isChecked,
   isDisabled,
   isRequired,
+  checkIndicatorBg,
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
@@ -39,7 +41,7 @@ export const Checkbox = ({
         {...props}
         id={id}
       >
-        <CheckboxPrimitive.Indicator className="text-bunker-800">
+        <CheckboxPrimitive.Indicator className={`${checkIndicatorBg || "text-bunker-800"}`}>
           <FontAwesomeIcon icon={faCheck} size="sm" />
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>

@@ -8,11 +8,13 @@ import {
   UpdateSecretParams
 } from "../interfaces/services/SecretService";
 import {
+  Folder,
   ISecret,
   IServiceTokenData,
   Secret,
   SecretBlindIndexData,
   ServiceTokenData,
+  TFolderRootSchema
 } from "../models";
 import { EventType, SecretVersion } from "../ee/models";
 import {
@@ -30,6 +32,7 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
+  K8_USER_AGENT_NAME,
   SECRET_PERSONAL,
   SECRET_SHARED
 } from "../variables";
@@ -46,7 +49,6 @@ import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/aut
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
-import Folder, { TFolderRootSchema } from "../models/folder";
 
 export const isValidScope = (
   authPayload: IServiceTokenData,
@@ -394,7 +396,8 @@ export const createSecretHelper = async ({
     secretCommentTag,
     folder: folderId,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8
+    keyEncoding: ENCODING_SCHEME_UTF8,
+    metadata
   }).save();
 
   const secretVersion = new SecretVersion({
@@ -464,8 +467,8 @@ export const createSecretHelper = async ({
   });
 
   const postHogClient = await TelemetryService.getPostHogClient();
-  
-  if (postHogClient && (metadata?.source !== "signup")) {
+
+  if (postHogClient && metadata?.source !== "signup") {
     postHogClient.capture({
       event: "secrets added",
       distinctId: await TelemetryService.getDistinctId({
@@ -497,6 +500,7 @@ export const getSecretsHelper = async ({
   workspaceId,
   environment,
   authData,
+  folderId,
   secretPath = "/"
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
@@ -506,7 +510,10 @@ export const getSecretsHelper = async ({
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+  
+  if (!folderId) {
+    folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+  }
 
   // get personal secrets first
   secrets = await Secret.find({
@@ -550,7 +557,7 @@ export const getSecretsHelper = async ({
       channel: authData.userAgentType,
       ipAddress: authData.ipAddress
     }));
-  
+
   await EEAuditLogService.createAuditLog(
     authData,
     {
@@ -568,21 +575,33 @@ export const getSecretsHelper = async ({
 
   const postHogClient = await TelemetryService.getPostHogClient();
 
+  // reduce the number of events captured
+  let shouldRecordK8Event = false
+  if (authData.userAgent == K8_USER_AGENT_NAME) {
+    const randomNumber = Math.random();
+    if (randomNumber > 0.9) {
+      shouldRecordK8Event = true
+    }
+  }
+
   if (postHogClient) {
-    postHogClient.capture({
-      event: "secrets pulled",
-      distinctId: await TelemetryService.getDistinctId({
-        authData
-      }),
-      properties: {
-        numberOfSecrets: secrets.length,
-        environment,
-        workspaceId,
-        folderId,
-        channel: authData.userAgentType,
-        userAgent: authData.userAgent
-      }
-    });
+    const shouldCapture = authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
+    const approximateForNoneCapturedEvents = secrets.length * 10
+
+    if (shouldCapture) {
+      postHogClient.capture({
+        event: "secrets pulled",
+        distinctId: await TelemetryService.getDistinctId({ authData }),
+        properties: {
+          numberOfSecrets: shouldRecordK8Event ? approximateForNoneCapturedEvents : secrets.length,
+          environment,
+          workspaceId,
+          folderId,
+          channel: authData.userAgentType,
+          userAgent: authData.userAgent
+        }
+      });
+    }
   }
 
   return secrets;
@@ -660,7 +679,7 @@ export const getSecretHelper = async ({
       ipAddress: authData.ipAddress
     }));
 
-    await EEAuditLogService.createAuditLog(
+  await EEAuditLogService.createAuditLog(
     authData,
     {
       type: EventType.GET_SECRET,
@@ -681,7 +700,7 @@ export const getSecretHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: "secrets pull",
+      event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData
       }),
@@ -825,8 +844,8 @@ export const updateSecretHelper = async ({
       channel: authData.userAgentType,
       ipAddress: authData.ipAddress
     }));
-  
-    await EEAuditLogService.createAuditLog(
+
+  await EEAuditLogService.createAuditLog(
     authData,
     {
       type: EventType.UPDATE_SECRET,
@@ -909,14 +928,14 @@ export const deleteSecretHelper = async ({
   if (type === SECRET_SHARED) {
     secrets = await Secret.find({
       secretBlindIndex,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       folder: folderId
     }).lean();
 
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       type,
       folder: folderId
@@ -932,7 +951,7 @@ export const deleteSecretHelper = async ({
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
       folder: folderId,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       type,
       ...getAuthDataPayloadUserObj(authData)
@@ -1098,7 +1117,8 @@ const recursivelyExpandSecret = async (
 
   let interpolatedValue = interpolatedSec[key];
   if (!interpolatedValue) {
-    throw new Error(`Couldn't find referenced value - ${key}`);
+    console.error(`Couldn't find referenced value - ${key}`);
+    return "";
   }
 
   const refs = interpolatedValue.match(INTERPOLATION_SYNTAX_REG);

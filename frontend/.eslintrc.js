@@ -72,6 +72,7 @@ module.exports = {
     "@typescript-eslint/no-non-null-assertion": "off",
     "simple-import-sort/exports": "warn",
     "@typescript-eslint/no-empty-function": "off",
+    "@typescript-eslint/no-extra-semi": "off",
     "simple-import-sort/imports": [
       "warn",
       {
