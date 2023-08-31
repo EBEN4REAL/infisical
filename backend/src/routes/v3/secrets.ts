@@ -285,4 +285,29 @@ router.delete(
   secretsController.deleteSecretByName
 );
 
+router.patch(
+  "/move/:folderId",
+  param("folderId").exists().isString().trim(),
+  body("secretIds").exists().isArray(),
+  validateRequest,
+  requireAuth({
+    acceptedAuthModes: [
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
+    ]
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "body",
+    locationEnvironment: "body",
+    requiredPermissions: [PERMISSION_WRITE_SECRETS],
+    requireBlindIndicesEnabled: true,
+    requireE2EEOff: false,
+    checkIPAllowlist: false
+  }),
+  secretsController.moveSecretsToFolder
+);
+
+
 export default router;

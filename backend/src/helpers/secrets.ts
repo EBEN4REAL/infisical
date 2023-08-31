@@ -4,6 +4,7 @@ import {
   DeleteSecretParams,
   GetSecretParams,
   GetSecretsParams,
+  MoveSecretParams,
   UpdateSecretParams
 } from "../interfaces/services/SecretService";
 import {
@@ -1013,6 +1014,15 @@ export const deleteSecretHelper = async ({
     secret
   };
 };
+
+export const  moveSecretsHelper = async ({folderId, secretIds}: MoveSecretParams) => {
+  const updateSecretsFolder = await Secret.updateMany(
+    { _id: { $in: secretIds.map((secret: {_id: string}) => secret._id) } },
+    { $set: { folder: folderId } }
+  )
+
+  return updateSecretsFolder
+}
 
 const fetchSecretsCrossEnv = (workspaceId: string, folders: TFolderRootSchema[], key: string) => {
   const fetchCache: Record<string, Record<string, string>> = {};

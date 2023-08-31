@@ -473,3 +473,31 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     secret
   });
 };
+
+export const moveSecretsToFolder = async (req: Request, res: Response) => {
+  const { folderId } = req.params;
+  const { secretIds } = req.body;
+  // eslint-disable-next-line no-console
+  console.error("FOLDER MOVE OBJECT => ", {folderId, secretIds})
+
+  const data = await SecretService.moveSecrets({
+    folderId,
+    secretIds,
+    authData: req.authData
+  });
+  // eslint-disable-next-line no-console
+  console.log("DATA => ", data)
+
+  // await EventService.handleEvent({
+  //   event: eventPushSecrets({
+  //     workspaceId: new Types.ObjectId(workspaceId),
+  //     environment,
+  //     secretPath
+  //   })
+  // });
+
+  return res.status(200).send({
+    success: data
+  });
+};
+

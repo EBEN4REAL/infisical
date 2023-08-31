@@ -58,3 +58,9 @@ export interface DeleteSecretParams {
   authData: AuthData;
   secretPath: string;
 }
+
+export interface MoveSecretParams {
+  folderId: string;
+  secretIds: {_id: string}[];
+  authData: AuthData;
+}
