@@ -983,7 +983,6 @@ export const DashboardPage = () => {
                         autoCapitalization={currentWorkspace?.autoCapitalization}
                       />
                     ))}
-                    
                     {!isReadOnly && !isRollbackMode && (
                       <tr>
                         <td colSpan={3} className="hover:bg-mineshaft-700">
