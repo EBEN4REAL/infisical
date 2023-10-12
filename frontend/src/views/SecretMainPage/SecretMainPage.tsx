@@ -19,6 +19,7 @@ import {
   useGetImportedSecrets,
   useGetProjectFolders,
   useGetProjectSecrets,
+  useGetSecretApprovalPolicyOfABoard,
   useGetSecretImports,
   useGetUserWsKey,
   useGetWorkspaceSnapshotList,
@@ -38,9 +39,9 @@ import { StoreProvider } from "./SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
-  "Retriving your encrypted secrets",
-  "Fetching folders",
-  "Getting secret import links"
+  "Retrieving your encrypted secrets...",
+  "Fetching folders...",
+  "Getting secret import links..."
 ];
 
 export const SecretMainPage = () => {
@@ -117,6 +118,13 @@ export const SecretMainPage = () => {
   });
   // fetch tags
   const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
+
+  const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
+    workspaceId,
+    environment,
+    secretPath
+  });
+  const isProtectedBranch = Boolean(boardPolicy);
 
   const {
     data: snapshotList,
@@ -207,6 +215,8 @@ export const SecretMainPage = () => {
             secretPath={secretPath}
             isProjectRelated
             onEnvChange={handleEnvChange}
+            isProtectedBranch={isProtectedBranch}
+            protectionPolicyName={boardPolicy?.name}
           />
         </div>
         {!isRollbackMode ? (
@@ -282,6 +292,7 @@ export const SecretMainPage = () => {
                     workspaceId={workspaceId}
                     secretPath={secretPath}
                     decryptFileKey={decryptFileKey!}
+                    isProtectedBranch={isProtectedBranch}
                   />
                 )}
                 {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
@@ -293,6 +304,7 @@ export const SecretMainPage = () => {
               decryptFileKey={decryptFileKey!}
               secretPath={secretPath}
               autoCapitalize={currentWorkspace?.autoCapitalization}
+              isProtectedBranch={isProtectedBranch}
             />
             <SecretDropzone
               secrets={secrets}
@@ -302,6 +314,7 @@ export const SecretMainPage = () => {
               secretPath={secretPath}
               isSmaller={isNotEmtpy}
               environments={currentWorkspace?.environments}
+              isProtectedBranch={isProtectedBranch}
             />
             <PitDrawer
               secretSnaphots={snapshotList}
